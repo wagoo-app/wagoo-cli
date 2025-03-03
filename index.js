@@ -86,7 +86,7 @@ program
       console.log("📥 Clonage du repository...");
       try {
         // Décommentez cette ligne pour effectuer le clonage réel si vous avez l'autorisation
-        execSync("git clone https://github.com/leo-lb29/wagoo-app.git", {
+        execSync("git clone https://github.com/wagoo-app/wagoo-app.git", {
           stdio: "inherit",
         });
         console.log("✅ Repo 'wagoo-app' cloné avec succès.");
