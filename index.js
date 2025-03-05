@@ -229,7 +229,7 @@ program
 
       try {
         execSync(
-          "npx tailwindcss -i ./dash/assets/css/input.css -o ./static/v1/dash/css/output.css --watch",
+          "npx @tailwindcss/cli -i ./dash/assets/css/input.css -o ./static/v1/dash/css/output.css --watch",
           { stdio: "inherit" }
         );
       } catch (error) {
