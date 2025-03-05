@@ -1,6 +1,6 @@
 {
   "name": "wagoo-cli",
-  "version": "1.0.14",
+  "version": "1.0.15",
   "description": "Tool for wagoo project -> V 1.0.8",
   "main": "index.js",
   "scripts": {
