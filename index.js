@@ -136,9 +136,9 @@ program
           hidefile.hideSync(wagooDir);
         }
         // Configuration pour écrire dans le fichier config.json
-        const config = { status: "installed", link: "https://wagoo.io" };
+        const config = { status: "installed"};
         fs.writeFileSync(
-          path.resolve(wagooDir, "config.json"),
+          path.resolve(wagooDir, "check.json"),
           JSON.stringify(config, null, 2)
         );
 
@@ -348,10 +348,6 @@ program
       const configContent = fs.readFileSync(wagooInConfigPath, "utf-8");
       const config = JSON.parse(configContent);
 
-      if (config.status !== "installed") {
-        console.error("❌ Aucun domaine n'est configuré.");
-        process.exit(1);
-      }
 
       if (!config.link) {
         console.error(
