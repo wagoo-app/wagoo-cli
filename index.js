@@ -2,11 +2,13 @@
 
 import { Command } from "commander";
 import { execSync } from "child_process";
-import fs from "fs";
+import fs, { link } from "fs";
 import readline from "readline";
 import { fileURLToPath } from "url";
 import path from "path";
 import hidefile from "hidefile";
+import { exit } from "process";
+import open from "open";
 
 const program = new Command();
 
@@ -28,8 +30,8 @@ const checkCommand = (cmd) => {
 
 // Vérifier si l'installation a déjà été effectuée
 const checkIfInstalled = () => {
-  const wagooConfigPath = path.resolve("wagoo-app", ".wagoo", "config.json");
-  const wagooInConfigPath = path.resolve(".wagoo", "config.json");
+  const wagooConfigPath = path.resolve("wagoo-app", ".wagoo", "check.json");
+  const wagooInConfigPath = path.resolve(".wagoo", "check.json");
 
   // Vérifie si l'un des fichiers de config existe et si le répertoire .wagoo est présent
   if (fs.existsSync(wagooConfigPath)) {
@@ -134,7 +136,7 @@ program
           hidefile.hideSync(wagooDir);
         }
         // Configuration pour écrire dans le fichier config.json
-        const config = { status: "installed" };
+        const config = { status: "installed", link: "https://wagoo.io" };
         fs.writeFileSync(
           path.resolve(wagooDir, "config.json"),
           JSON.stringify(config, null, 2)
@@ -315,6 +317,148 @@ program
     } catch (error) {
       console.error("❌ Une erreur s'est produite lors de l'installation.");
       console.error(error);
+      process.exit(1);
+    }
+  });
+
+program
+  .command("open")
+  .description("Lancer le site web dans le navigateur")
+  .action(() => {
+    try {
+      // Vérifier la présence du dossier .wagoo
+      const check = path.join(process.cwd(), ".wagoo");
+      if (!fs.existsSync(check)) {
+        console.error(
+          "❌ Cette commande ne fonctionne que dans un dossier du projet."
+        );
+        process.exit(1);
+      }
+
+      const wagooInConfigPath = path.resolve(".wagoo", "config.json");
+
+      // Vérifier l'existence du fichier config.json
+      if (!fs.existsSync(wagooInConfigPath)) {
+        console.error(
+          "❌ Le fichier config.json est introuvable dans le dossier .wagoo."
+        );
+        process.exit(1);
+      }
+
+      const configContent = fs.readFileSync(wagooInConfigPath, "utf-8");
+      const config = JSON.parse(configContent);
+
+      if (config.status !== "installed") {
+        console.error("❌ Aucun domaine n'est configuré.");
+        process.exit(1);
+      }
+
+      if (!config.link) {
+        console.error(
+          "❌ Aucun lien de navigateur configuré dans config.json."
+        );
+        process.exit(1);
+      }
+
+      const lien_browser = config.link;
+      console.log("🖋️ Ouverture du site web dans le navigateur...");
+      console.log(`🌐 Lien : ${lien_browser}`);
+
+      open(lien_browser)
+        .then(() => {
+          console.log("✅ Site web ouvert avec succès.");
+
+          setTimeout(() => {
+            process.exit(0);
+          }, 2000);
+        })
+        .catch((err) => {
+          console.error("❌ Erreur lors de l'ouverture du navigateur :", err);
+          process.exit(1);
+        });
+    } catch (error) {
+      console.error("❌ Une erreur s'est produite.");
+      console.error(error);
+      process.exit(1);
+    }
+  });
+
+program
+  .command("version")
+  .description("Afficher la version de wagoo-cli")
+  .action(() => {
+    const packageJsonPath = path.join(process.cwd(), "package.json");
+    if (fs.existsSync(packageJsonPath)) {
+      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
+      console.log(`${packageJson.name} version: ${packageJson.version}`);
+      console.log(`Note de version: \x1b[3m${packageJson.description}\x1b[0m`);
+      process.exit(0);
+    } else {
+      console.error("❌ Impossible de trouver le fichier package.json.");
+    }
+  });
+
+program
+  .command("patch")
+  .description(
+    "Créer un patch en incrémentant le numéro de version et en pushant sur GitHub"
+  )
+  .action(() => {
+    try {
+      const check = path.join(process.cwd(), ".wagoo");
+      if (!fs.existsSync(check)) {
+        console.error(
+          "❌ Cette commande ne fonctionne que dans un dossier du projet."
+        );
+        process.exit(1);
+      }
+
+      const configPath = path.resolve(".wagoo", "config.json");
+
+      // Vérifier si le fichier config.json existe
+      if (!fs.existsSync(configPath)) {
+        console.error("❌ Le fichier config.json est introuvable.");
+        process.exit(1);
+      }
+
+      // Lire le fichier de configuration
+      const configContent = fs.readFileSync(configPath, "utf-8");
+      const config = JSON.parse(configContent);
+
+      if (config.status !== "installed") {
+        console.error("❌ Le projet n'est pas installé correctement.");
+        process.exit(1);
+      }
+
+      // Incrémentation du patch
+      config.version.patch += 1;
+      const newVersion = `${config.version.major}.${config.version.minor}.${config.version.patch}`;
+
+      console.log(`🚀 Nouvelle version : ${newVersion}`);
+
+ 
+
+
+        config.version.note_version = "New version : " + newVersion;
+
+        // Écrire la mise à jour dans le fichier config.json
+        fs.writeFileSync(configPath, JSON.stringify(config, null, 2), "utf-8");
+        console.log("✅ config.json mis à jour avec succès.");
+
+        // Ajouter, commit et push sur GitHub
+        try {
+          execSync("git add .", { stdio: "inherit" });
+          execSync(`git commit -m "New version : ${newVersion}"`, { stdio: "inherit" });
+          execSync("git push", { stdio: "inherit" });
+
+          console.log("🚀 Patch créé et poussé sur GitHub avec succès !");
+        } catch (error) {
+          console.error("❌ Erreur lors du commit/push Git :", error.message);
+        }
+
+ 
+    } catch (error) {
+      console.error("❌ Une erreur s'est produite :", error.message);
       process.exit(1);
     }
   });
