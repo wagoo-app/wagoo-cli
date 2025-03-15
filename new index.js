@@ -12,9 +12,9 @@ import open from "open";
 import chalk from "chalk";
 import boxen from "boxen";
 import ora from "ora";
+import yoctoSpinner from "yocto-spinner";
 
 const program = new Command();
-const repo = "https://github.com/wagoo-app/wagoo-app.git";
 
 // Créer l'interface pour l'entrée utilisateur
 const rl = readline.createInterface({
@@ -52,45 +52,40 @@ const checkIfInstalled = () => {
     }
   } else {
     // Si les fichiers de config ne sont pas trouvés, l'installation n'est pas effectuée
-    // console.log("⚠️ wagoo n'est pas installé.");
+    console.log("⚠️ wagoo n'est pas installé.");
     return false; // Pas installé
   }
 
-  // console.log("⚠️ wagoo n'est pas installé.");
+  console.log("⚠️ wagoo n'est pas installé.");
   return false; // Pas installé
 };
-
 
 // Commande pour installer les dépendances et configurer le projet
 program
   .command("new")
   .description("Installer les dépendances et configurer le projet")
-  .action(async () => {
+  .action(() => {
     try {
-
-      /**
-       * START CLONAGE
-       */
-      const verif = ora({
+      const sippner = ora({
         text: "Vérification du répertoire...",
-        color: "cyan"
+        color: "cyan",
       }).start();
 
       // Vérifier si le dossier wagoo-app existe déjà
       const wagooAppDir = path.resolve("wagoo-app");
       if (fs.existsSync(wagooAppDir)) {
-        verif.fail(chalk.red(
-          "Le dossier 'wagoo-app' existe déjà. Veuillez supprimer ou renommer ce dossier avant de réessayer."
-        ));
+        console.log(
+          "❌ Le dossier 'wagoo-app' existe déjà. Veuillez supprimer ou renommer ce dossier avant de réessayer."
+        );
         rl.close();
         process.exit(1);
       }
 
       // Vérifier si le projet est déjà installé
       if (checkIfInstalled()) {
-        verif.fail(chalk.red(
-          "Abandon de l'installation, car le projet est déjà installé."
-        ));
+        console.log(
+          "❌ Abandon de l'installation, car le projet est déjà installé."
+        );
         rl.close();
         process.exit(1);
       }
@@ -98,31 +93,15 @@ program
       const repoPath = "wagoo-app"; // Chemin où le repo doit être cloné
       const wagooAppPath = path.resolve("wagoo-app"); // Définir le chemin pour wagoo-app
       const wagooDashAppPath = path.resolve("wagoo-app/dash"); // Définir le chemin pour wagoo-app
-     
-     
-      verif.succeed(chalk.green("Vérification du répertoire... terminée !"));
 
-
-      const clonage = ora({
-        text: "📥 Clonage du repository...",
-        color: "cyan"
-      }).start();
+      sippner.text = "📥 Clonage du repository...";
 
       try {
-       
-  
         // Décommentez cette ligne pour effectuer le clonage réel si vous avez l'autorisation
-        execSync(`git clone ${repo}`, {
+        execSync("git clone https://github.com/wagoo-app/wagoo-app.git", {
           stdio: "ignore",
         });
-        clonage.succeed(chalk.green("📥 Clonage du repository... Terminé !"));
-      /**
-       * END CLONAGE
-       */
-      const dependance = ora({
-        text: "📦 Installation des dépendances... 1/3",
-        color: "cyan"
-      }).start();
+        sippner.text = "📦 Installation des dépendances 1/3";
         // Installer les dépendances du projet principal
 
         // Changer de répertoire pour installer les dépendances de 'dash'
@@ -130,12 +109,12 @@ program
         process.chdir(WagooInstall);
         execSync("npm install", { stdio: "ignore" });
 
-        dependance.text = "📦 Installation des dépendances... 2/3";
+        sippner.text = "📦 Installation des dépendances 2/3";
         const dashPath = path.join(wagooAppPath, "dash");
         process.chdir(dashPath);
         execSync("npm install", { stdio: "ignore" });
         execSync("composer install", { stdio: "ignore" });
-    
+        dependance_two.success("Terminer");
 
         // const desktopApp = path.join(wagooAppPath, "desktop");
         // process.chdir(desktopApp);
@@ -144,38 +123,33 @@ program
         // Changer de répertoire pour installer les dépendances de 'app_desktop'
 
         // Copier le fichier .env
-        dependance.text = "📦 Installation des dépendances... 3/3";
+        sippner.text = "📦 Installation des dépendances 3/3";
 
         // Installer les dépendances du projet statique
+        console.log(" Installation des dépendances du projet statique...");
         const staticPath = path.join(wagooAppPath, "static", "v1", "dash");
         if (fs.existsSync(staticPath)) {
           process.chdir(staticPath);
           execSync("npm install", { stdio: "ignore" });
         } else {
-          dependance.fail(chalk.red(`Le répertoire ${staticPath} n'existe pas.`));
+          console.error(`❌ Le répertoire ${staticPath} n'existe pas.`);
           process.exit(1);
         }
 
-        dependance.succeed(chalk.green("📦 Installation des dépendances... Terminée !"));
-
-        const config_supp = ora({
-          text: "✏️ Configuration sumplémenantaire... 1/5",
-          color: "cyan"
-        }).start();
-
+        sippner.text = "✏️ Configuration sumplémenantaire 1/5";
         const configPath = path.join(wagooAppPath, "dash", "app", "config");
         process.chdir(configPath);
         fs.copyFileSync(".env.example", ".env");
 
         // Marquer l'installation comme terminée avec un fichier JSON
-        config_supp.text = "✏️ Configuration sumplémenantaire... 2/5";
+        sippner.text = "✏️ Configuration sumplémenantaire 2/5";
 
         const wagooDir = path.resolve(wagooAppPath, ".wagoo");
         if (!fs.existsSync(wagooDir)) {
           fs.mkdirSync(wagooDir);
           hidefile.hideSync(wagooDir);
         }
-        config_supp.text = "✏️ Configuration sumplémenantaire... 3/5";
+        sippner.text = "✏️ Configuration sumplémenantaire 3/5";
         // Configuration pour écrire dans le fichier config.json
         const config = { status: "installed" };
         fs.writeFileSync(
@@ -184,13 +158,13 @@ program
         );
 
         // Marquer l'installation comme terminée avec un fichier JSON
-        config_supp.text = "✏️ Configuration sumplémenantaire... 4/5";
+        sippner.text = "✏️ Configuration sumplémenantaire 4/5";
         const dashDir = path.resolve(wagooDashAppPath, ".dash");
         if (!fs.existsSync(dashDir)) {
           fs.mkdirSync(dashDir);
           hidefile.hideSync(dashDir);
         }
-        config_supp.text = "✏️ Configuration sumplémenantaire... 5/5";
+        sippner.text = "✏️ Configuration sumplémenantaire 5/5";
         // Configuration pour écrire dans le fichier config.json
         const configDash = { status: "installed" };
         fs.writeFileSync(
@@ -198,19 +172,12 @@ program
           JSON.stringify(configDash, null, 2)
         );
 
-        config_supp.succeed(chalk.green("✏️ Configuration sumplémenantaire... Terminée !"));
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        spinner.succeed(chalk.green("🎉 Installation terminée avec succès !"));
         console.log(
           boxen(
             chalk.green.bold("Projet installé avec succès 🎉\n\n") +
-             
-              chalk.blue("Developped by Wagoo SaaS\n") +
-              chalk.blue("Version : 1.0.0\n") +
-              chalk.blue("Licence : Preline UI Fair & Wagoo System\n") +
-              chalk.blue("How to install : https://github.com/wagoo-app/wagoo-app/install.md\n\n") +
-              chalk.blue("Launch project : \n") +
-              chalk.yellow("$ cd wagoo-app\n") +
-              chalk.yellow("$ wagoo open\n"),
+              chalk.cyan("Dossier: ") +
+              chalk.yellow(wagooAppPath),
             { padding: 1, borderStyle: "round", borderColor: "green" }
           )
         );
@@ -218,10 +185,10 @@ program
         rl.close();
         process.exit(0);
       } catch (error) {
-        clonage.fail(chalk.red(
-          "Vous n'avez pas la permission de cloner le repository wagoo."
-        ));
-        clonage.fail(chalk.red(error));
+        console.error(
+          "❌ Vous n'avez pas la permission de cloner le repository wagoo."
+        );
+        console.error(error);
         process.exit(1);
       }
     } catch (error) {
@@ -232,9 +199,9 @@ program
     }
   });
 
+// Commande pour lancer la génération du css
 
-
-  program
+program
   .command("push")
   .description("Add, commit and push to the repository")
   .action(() => {
@@ -534,14 +501,15 @@ program
     }
   });
 
-  program
+program
   .command("loaders")
   .description("Installer les dépendances et configurer le projet")
   .action(async () => {
     try {
       const clonage = ora({
         text: "Vérification du répertoire...",
-        color: "cyan"
+        color: "cyan",
+        spinner: yoctoSpinner
       }).start();
       await new Promise((resolve) => setTimeout(resolve, 100));
       clonage.text = "📥 Clonage du repository...";
@@ -611,4 +579,6 @@ program
   });
 
 
-  program.parse(process.argv);
+
+
+program.parse(process.argv);
