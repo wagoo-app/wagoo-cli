@@ -1,813 +1,470 @@
 #!/usr/bin/env node
 
 import { Command } from "commander";
-import { exec, execSync } from "child_process";
-import fs, { link } from "fs";
-import readline from "readline";
-import { fileURLToPath } from "url";
+import fs from "fs";
 import path from "path";
-import hidefile from "hidefile";
-import { exit } from "process";
-import open from "open";
 import chalk from "chalk";
+import inquirer from "inquirer";
+import chalkAnimation from "chalk-animation";
+import figlet from "figlet";
+import { createSpinner } from "nanospinner";
 import boxen from "boxen";
-import ora from "ora";
+import { exec } from "child_process";
+import YAML from "yaml"; // 📌 nouvelle dépendance à installer : npm i yaml
 
 const program = new Command();
-const repo = "https://github.com/wagoo-app/wagoo-app.git";
-
-// Créer l'interface pour l'entrée utilisateur
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-});
-
-// Fonction pour vérifier si une commande est disponible
-const checkCommand = (cmd) => {
-  try {
-    execSync(cmd, { stdio: "ignore" });
-    return true;
-  } catch {
-    return false;
-  }
-};
-
-// Vérifier si l'installation a déjà été effectuée
-const checkIfInstalled = () => {
-  const wagooConfigPath = path.resolve("wagoo-app", ".wagoo", "check.json");
-  const wagooInConfigPath = path.resolve(".wagoo", "check.json");
-
-  // Vérifie si l'un des fichiers de config existe et si le répertoire .wagoo est présent
-  if (fs.existsSync(wagooConfigPath)) {
-    const configContent = fs.readFileSync(wagooConfigPath, "utf-8");
-    const config = JSON.parse(configContent);
-    if (config.status === "installed") {
-      return true; // Déjà installé
-    }
-  } else if (fs.existsSync(wagooInConfigPath)) {
-    const configContent = fs.readFileSync(wagooInConfigPath, "utf-8");
-    const config = JSON.parse(configContent);
-    if (config.status === "installed") {
-      return true; // Déjà installé
-    }
-  } else {
-    // Si les fichiers de config ne sont pas trouvés, l'installation n'est pas effectuée
-    // console.log("⚠️ wagoo n'est pas installé.");
-    return false; // Pas installé
-  }
-
-  // console.log("⚠️ wagoo n'est pas installé.");
-  return false; // Pas installé
-};
-
-
-// Commande pour installer les dépendances et configurer le projet
-// program
-//   .command("new")
-//   .description("Installer les dépendances et configurer le projet")
-//   .action(() => {
-//     try {
-
-//       /**
-//        * START CLONAGE
-//        */
-//       const verif = ora({
-//         text: "Vérification du répertoire...",
-//         color: "cyan"
-//       }).start();
-
-//       // Vérifier si le dossier wagoo-app existe déjà
-//       const wagooAppDir = path.resolve("wagoo-app");
-//       if (fs.existsSync(wagooAppDir)) {
-//         verif.fail(chalk.red(
-//           "Le dossier 'wagoo-app' existe déjà. Veuillez supprimer ou renommer ce dossier avant de réessayer."
-//         ));
-//         rl.close();
-//         process.exit(1);
-//       }
-
-//       // Vérifier si le projet est déjà installé
-//       if (checkIfInstalled()) {
-//         verif.fail(chalk.red(
-//           "Abandon de l'installation, car le projet est déjà installé."
-//         ));
-//         rl.close();
-//         process.exit(1);
-//       }
-
-//       const repoPath = "wagoo-app"; // Chemin où le repo doit être cloné
-//       const wagooAppPath = path.resolve("wagoo-app"); // Définir le chemin pour wagoo-app
-//       const wagooDashAppPath = path.resolve("wagoo-app/dash"); // Définir le chemin pour wagoo-app
-
-
-//       verif.succeed(chalk.green("Vérification du répertoire... terminée !"));
-
-
-//       const clonage = ora({
-//         text: "📥 Clonage du repository...",
-//         color: "cyan"
-//       }).start();
-
-//       try {
-
-
-//         // Décommentez cette ligne pour effectuer le clonage réel si vous avez l'autorisation
-//         execSync(`git clone ${repo}`, {
-//           stdio: "ignore",
-//         });
-//         clonage.succeed(chalk.green("📥 Clonage du repository... Terminé !"));
-//         /**
-//          * END CLONAGE
-//          */
-//         const dependance = ora({
-//           text: "📦 Installation des dépendances... 1/3",
-//           color: "cyan"
-//         }).start();
-//         // Installer les dépendances du projet principal
-
-//         // Changer de répertoire pour installer les dépendances de 'dash'
-//         const WagooInstall = path.join(wagooAppPath);
-//         process.chdir(WagooInstall);
-//         execSync("npm install", { stdio: "ignore" });
-
-//         dependance.text = "📦 Installation des dépendances... 2/3";
-//         // const dashPath = path.join(wagooAppPath, "dash");
-//         // process.chdir(dashPath);
-//         // execSync("npm install", { stdio: "ignore" });
-//         execSync("composer install", { stdio: "ignore" });
-
-
-//         // const desktopApp = path.join(wagooAppPath, "desktop");
-//         // process.chdir(desktopApp);
-//         // execSync("npm install", { stdio: "ignore" });
-
-//         // Changer de répertoire pour installer les dépendances de 'app_desktop'
-
-//         // Copier le fichier .env
-//         dependance.text = "📦 Installation des dépendances... 3/3";
-
-//         // Installer les dépendances du projet statique
-//         const staticPath = path.join(wagooAppPath, "static", "v1", "dash");
-//         if (fs.existsSync(staticPath)) {
-//           process.chdir(staticPath);
-//           execSync("npm install", { stdio: "ignore" });
-//         } else {
-//           dependance.fail(chalk.red(`Le répertoire ${staticPath} n'existe pas.`));
-//           process.exit(1);
-//         }
-
-//         dependance.succeed(chalk.green("📦 Installation des dépendances... Terminée !"));
-
-//         const config_supp = ora({
-//           text: "✏️ Configuration sumplémenantaire... 1/5",
-//           color: "cyan"
-//         }).start();
-
-//         const configPath = path.join(wagooAppPath, "app", "config");
-//         process.chdir(configPath);
-//         fs.copyFileSync(".env.example", ".env");
-
-//         // Marquer l'installation comme terminée avec un fichier JSON
-//         config_supp.text = "✏️ Configuration sumplémenantaire... 2/3";
-
-//         const wagooDir = path.resolve(wagooAppPath, ".wagoo");
-//         if (!fs.existsSync(wagooDir)) {
-//           fs.mkdirSync(wagooDir);
-//           hidefile.hideSync(wagooDir);
-//         }
-//         config_supp.text = "✏️ Configuration sumplémenantaire... 3/3";
-//         // Configuration pour écrire dans le fichier config.json
-//         const config = { status: "installed" };
-//         fs.writeFileSync(
-//           path.resolve(wagooDir, "check.json"),
-//           JSON.stringify(config, null, 2)
-//         );
-
-//         config_supp.succeed(chalk.green("✏️ Configuration sumplémenantaire... Terminée !"));
-
-//         console.log(
-//           boxen(
-//             chalk.green.bold("Projet installé avec succès 🎉\n\n") +
-
-//             chalk.blue("Developped by Wagoo SaaS\n") +
-//             chalk.blue("Version : 1.0.0\n") +
-//             chalk.blue("Licence : Preline UI Fair & Wagoo System\n") +
-//             chalk.blue("How to install : https://github.com/wagoo-app/wagoo-app/install.md\n\n") +
-//             chalk.blue("Launch project : \n") +
-//             chalk.yellow("$ cd wagoo-app\n") +
-//             chalk.yellow("$ wagoo open\n"),
-//             { padding: 1, borderStyle: "round", borderColor: "green" }
-//           )
-//         );
-
-//         rl.close();
-//         process.exit(0);
-//       } catch (error) {
-//         clonage.fail(chalk.red(
-//           "Vous n'avez pas la permission de cloner le repository wagoo."
-//         ));
-//         clonage.fail(chalk.red(error));
-//         process.exit(1);
-//       }
-//     } catch (error) {
-//       console.error("❌ Une erreur s'est produite lors de l'installation.");
-//       console.error(error);
-//       rl.close();
-//       process.exit(1);
-//     }
-//   });
-
-
-function runCommand(command, loader, successMessage, failureMessage) {
-  return new Promise((resolve, reject) => {
-    const process = exec(command);
-
-    process.stdout.on("data", (data) => {
-      loader.text = `📦 ${data.trim()}`;
-    });
-
-    // process.stderr.on("data", (data) => {
-    //   console.error(chalk.green(data.trim()));
-    // });
-
-    process.on("close", (code) => {
-      if (code === 0) {
-        loader.succeed(chalk.green(successMessage));
-        resolve();
-      } else {
-        loader.fail(chalk.red(failureMessage));
-        reject(new Error(failureMessage));
-      }
-    });
-  });
-}
-
-program.command("new").description("Installer les dépendances et configurer le projet").action(async () => {
-  try {
-    const verif = ora({ text: "📂 Vérification du répertoire...", color: "cyan" }).start();
-    const wagooAppDir = path.resolve("wagoo-app");
-
-    if (fs.existsSync(wagooAppDir)) {
-      verif.fail(chalk.red("Le dossier 'wagoo-app' existe déjà."));
-      process.exit(1);
-    }
-    // Vérifier si PHP est installé
-    if (!checkCommand("php -v")) {
-      verif.fail(chalk.red("PHP n'est pas installé. Veuillez installer PHP avant de continuer."));
-      process.exit(1);
-    }
-    else {
-      verif.succeed(chalk.green("PHP est installé."));
-    }
-
-    // Vérifier si Node.js est installé
-    if (!checkCommand("node -v")) {
-      verif.fail(chalk.red("Node.js n'est pas installé. Veuillez installer Node.js avant de continuer."));
-      process.exit(1);
-    }
-    else {
-      verif.succeed(chalk.green("Node.js est installé."));
-    }
-
-    // Vérifier si npm est installé
-    if (!checkCommand("npm -v")) {
-      verif.fail(chalk.red("npm n'est pas installé. Veuillez installer npm avant de continuer."));
-      process.exit(1);
-    }
-    else {
-      verif.succeed(chalk.green("npm est installé."));
-    }
-
-    // Installer Composer
-    // const installComposer = ora({ text: "📦 Installation de Composer...", color: "cyan" }).start();
-
-
-    verif.succeed(chalk.green("📂 Vérification du répertoire... terminée !"));
-
-    const clonage = ora({ text: "📥 Clonage du repository...", color: "cyan" }).start();
-
-    try {
-      await runCommand(`git clone ${repo}`, clonage, "📥 Clonage terminé !", "Erreur lors du clonage.");
-      // await runCommand(`echo>hey.txt`, clonage, "📥 Clonage terminé !", "Erreur lors du clonage.");
-
-      const dependance = ora({ text: "📦 Installation des dépendance... ", color: "cyan" }).start();
-
-
-      try {
-        await runCommand(`cd ${wagooAppDir} && php -r \"copy('https://getcomposer.org/installer', 'composer-setup.php');\"`, dependance, "📦 Téléchargement de Composer... terminée !", "Échec de l'installation de Composer.");
-        await runCommand(`cd ${wagooAppDir} && php -r \"if (hash_file('sha384', 'composer-setup.php') === 'dac665fdc30fdd8ec78b38b9800061b4150413ff2e3b6f88543c636f7cd84f6db9189d43a81e5503cda447da73c7e5b6') { echo 'Installer dependanceied'.PHP_EOL; } else { echo 'Installer corrupt'.PHP_EOL; unlink('composer-setup.php'); exit(1); }\"`, dependance, "📦 Check securité de Composer... terminée !", "Échec de l'installation de Composer.");
-        await runCommand(`cd ${wagooAppDir} && php composer-setup.php`, dependance, "📦 Installation de Composer... terminée !", "Échec de l'installation de Composer.");
-        await runCommand(`cd ${wagooAppDir} && php -r \"unlink('composer-setup.php');\"`, dependance, "📦 Optimisation de Composer... terminée !", "Échec de l'installation de Composer.");
-
-      } catch (error) {
-        installComposer.fail(chalk.red("Erreur lors de l'installation de Composer."));
-        process.exit(1);
-      }
-
-
-      await runCommand(`cd ${wagooAppDir} && npm install`, dependance, "📦 Dépendances installées !", "Échec de l'installation des dépendances.");
-
-      const dependance2 = ora({ text: "📦 Installation Composer... ", color: "cyan" }).start();
-      await runCommand(`cd ${wagooAppDir} && composer install`, dependance2, "📦 Installation Composer réussie !", "Échec de l'installation Composer.");
-
-
-      const dependance3 = ora({ text: "📦 Installation des dépendances static... ", color: "cyan" }).start();
-      const staticPath = path.join(wagooAppDir, "static", "v1", "dash");
-      if (fs.existsSync(staticPath)) {
-        await runCommand(`cd ${staticPath} && npm install`, dependance3, "📦 Dépendances statiques installées !", "Échec de l'installation des dépendances statiques.");
-      } else {
-        dependance3.fail(chalk.red(`Le répertoire ${staticPath} n'existe pas.`));
-        process.exit(1);
-      }
-
-      const config_supp = ora({ text: "✏️ Configuration supplémentaire...", color: "cyan" }).start();
-      const configPath = path.join(wagooAppDir, "app", "config");
-      fs.copyFileSync(path.join(configPath, ".env.example"), path.join(configPath, ".env"));
-
-      const wagooDir = path.resolve(wagooAppDir, ".wagoo");
-      if (!fs.existsSync(wagooDir)) {
-        fs.mkdirSync(wagooDir);
-        hidefile.hideSync(wagooDir);
-      }
-
-      fs.writeFileSync(path.resolve(wagooDir, "check.json"), JSON.stringify({ status: "installed" }, null, 2));
-
-
-      const wagooConfigPath = path.join(wagooAppDir, ".wagoo-config");
-
-      if (!fs.existsSync(wagooConfigPath)) {
-        const defaultConfig = {
-          name: "Wagoo",
-          link: "https://wagoo.io",
-          description: "Wagoo Project",
-          version: {
-            major: 1,
-            minor: 0,
-            patch: 0,
-            note_version: "New version : 1.0.0"
-          }
-        };
-        fs.writeFileSync(wagooConfigPath, JSON.stringify(defaultConfig, null, 2), "utf-8");
-      }
-
-      config_supp.succeed(chalk.green("✏️ Configuration supplémentaire terminée !"));
-
-      const packageJsonPath = path.join(wagooAppDir, ".wagoo-config");
-
-
-
-      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
-      const version = `${packageJson.version.major}.${packageJson.version.minor}.${packageJson.version.patch}`;
-
-      console.log(
-        boxen(
-          chalk.green.bold("Projet installé avec succès 🎉\n\n") +
-          chalk.blue("Developped by Wagoo SaaS\n") +
-          chalk.blue(`Version : ${version}\n`) +
-          chalk.blue("Licence : Preline UI Fair & Wagoo System\n") +
-          chalk.blue("How to install and config server : https://github.com/wagoo-app/wagoo-app/install.md\n\n") +
-          chalk.blue("Launch project : \n") +
-          chalk.yellow("$ cd wagoo-app\n") +
-          chalk.yellow("$ wagoo help\n"),
-          { padding: 1, borderStyle: "round", borderColor: "green" }
-        )
-      );
-
-      process.exit(0);
-    } catch (error) {
-      clonage.fail(chalk.red("Erreur lors de l'installation."));
-      console.error(error);
-      process.exit(1);
-    }
-  } catch (error) {
-    console.error("❌ Une erreur s'est produite lors de l'installation.");
-    console.error(error);
+program
+  .name("wagoo")
+  .description("CLI Wagoo (gestion projet & versions)")
+  .version("1.0.0");
+
+const filePath = path.join(process.cwd(), ".wagoo-config");
+
+// -------- Fonctions utilitaires --------
+function checkConfig() {
+  if (!fs.existsSync(filePath)) {
+    console.log(
+      chalk.red(
+        ".wagoo-config introuvable. Veuillez exécuter 'wagoo init' d'abord."
+      )
+    );
     process.exit(1);
   }
-});
+  return YAML.parse(fs.readFileSync(filePath, "utf-8"));
+}
 
+function saveConfig(data) {
+  fs.writeFileSync(filePath, YAML.stringify(data), "utf8");
+}
 
-
+async function safePrompt(questions) {
+  try {
+    return await inquirer.prompt(questions);
+  } catch (err) {
+    if (err && err.name === "ExitPromptError") {
+      console.log("\n" + chalk.yellow("Opération annulée par l'utilisateur."));
+      process.exit(0);
+    }
+    throw err;
+  }
+}
 
 program
-  .command("push")
-  .description("Add, commit and push to the repository")
-  .action(() => {
-    try {
-      // Vérifier la présence du dossier .wagoo
-      const check = path.join(process.cwd(), ".wagoo");
-      if (!fs.existsSync(check)) {
-        console.error(
-          "❌ Cette commande ne fonctionne que dans un dossier du projet."
-        );
-        process.exit(1); // Stoppe le processus si le dossier n'est pas présent
-      }
+  .command("r <nom_command>")
+  .description("Exécuter une commande définie dans .wagoo-config")
+  .action((nom_command) => {
+    const data = checkConfig();
 
-      console.log("🖋️ Load for push");
-
-      try {
-        execSync("git add .", { stdio: "ignore" });
-        execSync('git commit -m "Push from wagoo-cli"', { stdio: "ignore" });
-        execSync("git push", { stdio: "ignore" });
-        console.log("🖋️ Push finish");
-        process.exit(1);
-      } catch (error) {
-        console.error(
-          "❌ Erreur lors de l'exécution de la commande tailwindcss."
-        );
-        console.error(error);
-        process.exit(1);
-      }
-    } catch (error) {
-      console.error("❌ Une erreur s'est produite lors de l'installation.");
-      console.error(error);
+    if (!data.commands || data.commands.length === 0) {
+      console.log(chalk.red("⚠️ Aucune commande définie dans .wagoo-config."));
       process.exit(1);
     }
-  });
 
-program
-  .command("css")
-  .description("Lancer tailwindcss pour générer le fichier css")
-  .action(() => {
-    try {
-      // Vérifier la présence du dossier .wagoo
-      const check = path.join(process.cwd(), ".wagoo");
-      if (!fs.existsSync(check)) {
-        console.error(
-          "❌ Cette commande ne fonctionne que dans un dossier du projet."
-        );
-        process.exit(1); // Stoppe le processus si le dossier n'est pas présent
-      }
+    const cmd = data.commands.find(
+      (c) => c.nom_command.toLowerCase() === nom_command.toLowerCase()
+    );
 
-      console.log("🖋️ Chargement du css");
-
-      try {
-        execSync(
-          "npx @tailwindcss/cli -i ./assets/css/input.css -o ./static/v1/dash/css/output.css --watch",
-          { stdio: "ignore" }
-        );
-      } catch (error) {
-        console.error(
-          "❌ Erreur lors de l'exécution de la commande tailwindcss."
-        );
-        console.error(error);
-        process.exit(1);
-      }
-    } catch (error) {
-      console.error("❌ Une erreur s'est produite lors de l'installation.");
-      console.error(error);
-      process.exit(1);
-    }
-  });
-
-program
-  .command("build")
-  .description("Lancer tailwindcss pour générer le fichier css")
-  .action(() => {
-    try {
-      // Vérifier la présence du dossier .wagoo
-      const check = path.join(process.cwd(), ".wagoo");
-      if (!fs.existsSync(check)) {
-        console.error(
-          "❌ Cette commande ne fonctionne que dans un dossier du projet."
-        );
-        process.exit(1); // Stoppe le processus si le dossier n'est pas présent
-      }
-
-
-      const wagooDirectory = path.join(process.cwd());
-      try {
-        const desktopApp = path.join(wagooDirectory, "desktop");
-        process.chdir(desktopApp);
-        execSync("npm run build", { stdio: "ignore" });
-        console.log("🎉 Build terminé!");
-        rl.close();
-        process.exit(0);
-      } catch (error) {
-        console.error(
-          "❌ Erreur lors de l'exécution de la commande tailwindcss."
-        );
-        console.error(error);
-        process.exit(1);
-      }
-    } catch (error) {
-      console.error("❌ Une erreur s'est produite lors de l'installation.");
-      console.error(error);
-      process.exit(1);
-    }
-  });
-
-program
-  .command("code")
-  .description("Lancer tailwindcss pour générer le fichier css")
-  .action(() => {
-    try {
-      // Vérifier la présence du dossier .wagoo
-      const check = path.join(process.cwd(), ".wagoo");
-      if (!fs.existsSync(check)) {
-        console.error(
-          "❌ Cette commande ne fonctionne que dans un dossier du projet."
-        );
-        process.exit(1); // Stoppe le processus si le dossier n'est pas présent
-      }
-
-      console.log("🖋️ Chargement du css");
-      const wagooDirectory = path.join(process.cwd());
-      try {
-        process.chdir(wagooDirectory);
-        execSync('"Wagoo SAAS.code-workspace"', { stdio: "ignore" });
-        console.log("🎉 Build terminé!");
-        rl.close();
-        process.exit(0);
-      } catch (error) {
-        console.error(
-          "❌ Erreur lors de l'exécution de la commande tailwindcss."
-        );
-        console.error(error);
-        process.exit(1);
-      }
-    } catch (error) {
-      console.error("❌ Une erreur s'est produite lors de l'installation.");
-      console.error(error);
-      process.exit(1);
-    }
-  });
-
-program
-  .command("open")
-  .description("Lancer le site web dans le navigateur")
-  .action(() => {
-    try {
-      // Vérifier la présence du dossier .wagoo
-      const check = path.join(process.cwd(), ".wagoo");
-      if (!fs.existsSync(check)) {
-        console.error(
-          "❌ Cette commande ne fonctionne que dans un dossier du projet."
-        );
-        process.exit(1);
-      }
-
-      const wagooInConfigPath = path.resolve(".wagoo-config");
-
-      // Vérifier l'existence du fichier config.json
-      if (!fs.existsSync(wagooInConfigPath)) {
-        console.error(
-          "❌ Le fichier config.json est introuvable dans le dossier .wagoo."
-        );
-        process.exit(1);
-      }
-
-      const configContent = fs.readFileSync(wagooInConfigPath, "utf-8");
-      const config = JSON.parse(configContent);
-
-      if (!config.link) {
-        console.error(
-          "❌ Aucun lien de navigateur configuré dans config.json."
-        );
-        process.exit(1);
-      }
-
-      const lien_browser = config.link;
-      console.log("🖋️ Ouverture du site web dans le navigateur...");
-      console.log(`🌐 Lien : ${lien_browser}`);
-
-      open(lien_browser)
-        .then(() => {
-          console.log("✅ Site web ouvert avec succès.");
-
-          setTimeout(() => {
-            process.exit(0);
-          }, 2000);
-        })
-        .catch((err) => {
-          console.error("❌ Erreur lors de l'ouverture du navigateur :", err);
-          process.exit(1);
-        });
-    } catch (error) {
-      console.error("❌ Une erreur s'est produite.");
-      console.error(error);
-      process.exit(1);
-    }
-  });
-
-program
-  .command("version")
-  .description("Afficher la version de wagoo-cli")
-  .action(() => {
-    const check = path.join(process.cwd(), ".wagoo");
-    if (!fs.existsSync(check)) {
-      console.error(
-        chalk.red.bold(
-          "❌ Cette commande ne fonctionne que dans un dossier du projet."
+    if (!cmd) {
+      console.log(
+        chalk.red(
+          `❌ La commande '${nom_command}' n’existe pas dans .wagoo-config.`
+        )
+      );
+      console.log(chalk.yellow("📜 Commandes disponibles :"));
+      data.commands.forEach((c) =>
+        console.log(
+          `   • ${chalk.cyan(c.nom_command)} → ${chalk.gray(c.action_commands)}`
         )
       );
       process.exit(1);
     }
 
-    const packageJsonPath = path.join(process.cwd(), ".wagoo-config");
+    console.log(chalk.green(`🚀 Exécution : ${cmd.action_commands}`));
+    const child = exec(cmd.action_commands, { stdio: "inherit", shell: true });
 
-    if (!fs.existsSync(packageJsonPath)) {
-      const defaultConfig = {
-        name: "Wagoo",
-        link: "https://wagoo.io",
-        description: "Ce projet est un tableau de bord pour gérer les projets de sauvegarde.",
+    child.stdout?.pipe(process.stdout);
+    child.stderr?.pipe(process.stderr);
+
+    child.on("exit", (code) => {
+      if (code === 0) {
+        console.log(
+          chalk.green(`✅ Commande '${nom_command}' terminée avec succès !`)
+        );
+      } else {
+        console.log(
+          chalk.red(
+            `❌ Erreur : la commande s'est terminée avec le code ${code}.`
+          )
+        );
+      }
+    });
+  });
+
+program
+  .command("init")
+  .description("Initialiser un projet Wagoo CLI")
+  .action(async () => {
+    if (fs.existsSync(filePath)) {
+      console.log(
+        chalk.yellow(".wagoo-config existe déjà. Aucune action effectuée.")
+      );
+      return;
+    }
+
+    const answers = await safePrompt([
+      {
+        type: "input",
+        name: "name",
+        message: "Nom du projet :",
+        default: "mon-projet",
+      },
+      {
+        type: "input",
+        name: "description",
+        message: "Description du projet :",
+        default: "Description du projet",
+      },
+      {
+        type: "input",
+        name: "link",
+        message: "Lien du projet :",
+        default: "http://localhost:3000",
+      },
+      {
+        type: "list",
+        name: "visual",
+        message: "Choisir le type de visuel du projet :",
+        choices: ["default", "Next.js"],
+        default: "default",
+      },
+    ]);
+
+    const spinner = createSpinner(
+      "Création du fichier .wagoo-config..."
+    ).start();
+    await new Promise((res) => setTimeout(res, 1000));
+    let data = {};
+    if (answers.visual === "Next.js") {
+      data = {
+        name: answers.name,
+        description: answers.description,
         version: {
-          major: 1,
+          major: 0,
           minor: 0,
           patch: 0,
-          note_version: "New version : 1.0.0"
-        }
-      };
-      fs.writeFileSync(packageJsonPath, JSON.stringify(defaultConfig, null, 2), "utf-8");
-    }
-    if (fs.existsSync(packageJsonPath)) {
-      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
-      const version = `${packageJson.version.major}.${packageJson.version.minor}.${packageJson.version.patch}`;
-
-      console.log(
-        boxen(
-          `${chalk.cyan.bold(packageJson.name)} ${chalk.green(`v${version}`)}\n\n` +
-          `${chalk.blue("Description:")} ${chalk.white(packageJson.description)}\n` +
-          `${chalk.blue("Link:")} ${chalk.white(packageJson.link)}\n` +
-          `${chalk.blue("Version Note:")} ${chalk.white(packageJson.version.note_version)}`,
+          name_version: "",
+          note_version: "",
+        },
+        links: [
           {
-            padding: 1,
-            margin: 1,
-            borderStyle: "round",
-            borderColor: "cyan",
-          }
+            name: "Frontend",
+            url: answers.link,
+          },
+        ],
+        commands: [
+          {
+            nom_command: "version",
+            description: "Afficher la version de Wagoo",
+            action_commands: "wagoo version",
+          },
+          {
+            nom_command: "dev",
+            description: "Démarrer le serveur de développement",
+            action_commands: "npm run dev",
+          },
+          {
+            nom_command: "docker",
+            description: "Démarrer le projet avec Docker",
+            action_commands: "docker compose up -d",
+          },
+          {
+            nom_command: "prisma",
+            description: "Lancer Prisma Studio",
+            action_commands: "npx prisma studio",
+          },
+          {
+            nom_command: "build",
+            description: "Construire le projet",
+            action_commands: "npm run build",
+          },
+          {
+            nom_command: "start",
+            description: "Démarrer le projet",
+            action_commands: "npm run start",
+          },
+        ],
+      };
+    } else {
+      data = {
+        name: answers.name,
+        description: answers.description,
+        version: {
+          major: 0,
+          minor: 0,
+          patch: 0,
+          name_version: "",
+          note_version: "",
+        },
+        links: [
+          {
+            name: "Frontend",
+            url: answers.link,
+          },
+        ],
+        commands: [
+          {
+            nom_command: "version",
+            description: "Affiche la version actuelle du projet",
+            action_commands: "wagoo version",
+          },
+        ],
+      };
+    }
+
+    // Sauvegarde YAML
+    fs.writeFileSync(filePath, YAML.stringify(data), "utf8");
+    spinner.success({
+      text: chalk.green("Fichier .wagoo-config (YAML) créé avec succès !"),
+    });
+
+    console.log(
+      chalk.blue(figlet.textSync(answers.name, { horizontalLayout: "full" }))
+    );
+    console.log(chalk.green("\nConfiguration de base (YAML):"));
+    console.log(chalk.yellow(YAML.stringify(data)));
+  });
+
+// -------- Commande c (liste + add) --------
+program
+  .command("c")
+  .description("Lister ou ajouter des commandes")
+  .option("-a, --add", "Ajouter une nouvelle commande")
+  .action(async (options) => {
+    const data = checkConfig();
+
+    if (options.add) {
+      const answers = await safePrompt([
+        {
+          type: "input",
+          name: "nom_command",
+          message: "Nom de la nouvelle commande :",
+        },
+        {
+          type: "input",
+          name: "action_commands",
+          message: "Action de la commande :",
+        },
+      ]);
+
+      data.commands.push({
+        nom_command: answers.nom_command,
+        action_commands: answers.action_commands,
+      });
+
+      const spinner = createSpinner("Ajout de la commande...").start();
+      await new Promise((res) => setTimeout(res, 1000));
+      saveConfig(data);
+      spinner.success({
+        text: chalk.green("Nouvelle commande ajoutée avec succès !"),
+      });
+    }
+
+    if (!data.commands || data.commands.length === 0) {
+      console.log(chalk.yellow("Aucune commande trouvée."));
+      return;
+    }
+
+    console.log(chalk.blue("Liste des commandes :"));
+    data.commands.forEach((cmd, index) => {
+      console.log(
+        chalk.yellow(
+          `${index + 1}. ${cmd.nom_command} → ${cmd.action_commands}`
         )
       );
-      process.exit(0);
+    });
+  });
+
+// -------- Commande version --------
+program
+  .command("version")
+  .description("Afficher ou configurer la version")
+  .option("--config", "Modifier name_version")
+  .action(async (options) => {
+    const data = checkConfig();
+
+    if (options.config) {
+      const answer = await safePrompt([
+        {
+          type: "input",
+          name: "name_version",
+          message: "Nom de la version :",
+          default: data.version.name_version || "",
+        },
+      ]);
+
+      const spinner = createSpinner("Mise à jour de name_version...").start();
+      await new Promise((res) => setTimeout(res, 1000));
+      data.version.name_version = answer.name_version;
+      saveConfig(data);
+      spinner.success({
+        text: chalk.green("name_version mis à jour avec succès !"),
+      });
     } else {
-      console.error(
-        chalk.red.bold("❌ Impossible de trouver le fichier config.json.")
+      const versionBox = boxen(
+        `📦 Version : ${chalk.bold.blue(
+          data.version.name_version || "non définie"
+        )}\n` +
+          `📝 Note   : ${chalk.yellow(
+            data.version.note_version || "non définie"
+          )}`,
+        {
+          padding: { top: 0, right: 1, bottom: 0, left: 1 },
+          margin: 1,
+          borderColor: "cyan",
+          borderStyle: "round",
+          title: "Wagoo Project",
+          titleAlignment: "center",
+        }
       );
-      process.exit(1);
+      console.log(versionBox);
     }
   });
 
+// -------- Commande versions --------
 program
-  .command("patch")
+  .command("versions")
+  .description("Afficher note_version")
+  .action(() => {
+    const data = checkConfig();
+    console.log(
+      chalk.blue(`note_version : ${data.version.note_version || "non définie"}`)
+    );
+  });
+
+// -------- Commande info --------
+program
+  .command("info")
   .description(
-    "Créer un patch en incrémentant le numéro de version et en pushant sur GitHub"
+    "Afficher toutes les informations du projet depuis .wagoo-config"
   )
   .action(() => {
-    try {
-      const check = path.join(process.cwd());
-      if (!fs.existsSync(check)) {
-        console.error(
-          "❌ Cette commande ne fonctionne que dans un dossier du projet."
-        );
-        process.exit(1);
-      }
+    const data = checkConfig();
 
-      const configPath = path.resolve(".wagoo", "check.json");
+    const projectInfo = `${chalk.bold("📛 Nom :")} ${chalk.cyan(data.name)}
+${chalk.bold("🔗 Lien :")} ${chalk.blue(data.link)}
+${chalk.bold("📝 Description :")} ${chalk.white(data.description)}
 
-      // Vérifier si le fichier config.json existe
-      if (!fs.existsSync(configPath)) {
-        console.error("❌ Le fichier config.json est introuvable.");
-        process.exit(1);
-      }
+${chalk.bold("📦 Version :")} ${chalk.green(
+      data.version.name_version || "non définie"
+    )}
+   • Major : ${data.version.major}
+   • Minor : ${data.version.minor}
+   • Patch : ${data.version.patch}
+   • Note  : ${chalk.yellow(data.version.note_version || "non définie")}
 
-      // Lire le fichier de configuration
-      const configContent = fs.readFileSync(configPath, "utf-8");
-      const config = JSON.parse(configContent);
+${chalk.bold("📜 Commandes disponibles :")}
+${(data.commands || [])
+  .map(
+    (cmd, i) =>
+      `   ${i + 1}. ${chalk.cyan(cmd.nom_command)} → ${chalk.gray(
+        cmd.action_commands
+      )} (${chalk.blue(cmd.description || "pas de description")})`
+  )
+  .join("\n")}`.trim();
 
-      if (config.status !== "installed") {
-        console.error("❌ Le projet n'est pas installé correctement.");
-        process.exit(1);
-      }
+    const infoBox = boxen(projectInfo, {
+      padding: { top: 0, right: 1, bottom: 0, left: 1 },
+      margin: 1,
+      borderColor: "green",
+      borderStyle: "round",
+      title: "Wagoo Project Info",
+      titleAlignment: "center",
+    });
 
-      const packageJsonPath = path.join(process.cwd(), ".wagoo-config");
-
-      if (!fs.existsSync(packageJsonPath)) {
-        const defaultConfig = {
-          name: "Wagoo",
-          link: "https://wagoo.io",
-          description: "Ce projet est un tableau de bord pour gérer les projets de sauvegarde.",
-          version: {
-            major: 1,
-            minor: 0,
-            patch: 0,
-            note_version: "New version : 1.0.0"
-          }
-        };
-        fs.writeFileSync(packageJsonPath, JSON.stringify(defaultConfig, null, 2), "utf-8");
-      }
-
-      const WagooConfigPath = path.resolve(".wagoo-config");
-
-      const ConfigWagoo = fs.readFileSync(WagooConfigPath, "utf-8");
-      const wagooconfig = JSON.parse(ConfigWagoo);
-
-      // Incrémentation du patch
-      wagooconfig.version.patch += 1;
-      const newVersion = `${wagooconfig.version.major}.${wagooconfig.version.minor}.${wagooconfig.version.patch}`;
-
-      console.log(`🚀 Nouvelle version : ${newVersion}`);
-
-      // Écrire la mise à jour dans le fichier config.json
-      fs.writeFileSync(WagooConfigPath, JSON.stringify(wagooconfig, null, 2), "utf-8");
-      console.log("✅ .wagoo-config mis à jour avec succès.");
-
-      // Ajouter, commit et push sur GitHub
-      try {
-        execSync("git add .", { stdio: "ignore" });
-        execSync(`git commit -m "New version : ${newVersion}"`, {
-          stdio: "ignore",
-        });
-        execSync("git push", { stdio: "ignore" });
-
-        console.log("🚀 Patch créé et poussé sur GitHub avec succès !");
-        rl.close();
-        process.exit(1);
-      } catch (error) {
-        console.error("❌ Erreur lors du commit/push Git :", error.message);
-        rl.close();
-        process.exit(1);
-      }
-    } catch (error) {
-      console.error("❌ Une erreur s'est produite :", error.message);
-      process.exit(1);
-    }
+    console.log(infoBox);
   });
 
+// -------- Commande bump --------
 program
-  .command("loaders")
-  .description("Installer les dépendances et configurer le projet")
+  .command("bump")
+  .description(
+    "Incrémenter la version (patch, minor, major) et créer un commit Git"
+  )
   .action(async () => {
-    try {
-      const clonage = ora({
-        text: "Vérification du répertoire...",
-        color: "cyan"
-      }).start();
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      clonage.text = "📥 Clonage du repository...";
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      clonage.succeed(chalk.green("🎉 Installation terminée avec succès !"));
+    const data = checkConfig();
 
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      const dependance = ora({
-        text: "📦 Installation des dépendances 1/3",
-        color: "cyan",
-      }).start();
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      dependance.text = "📦 Installation des dépendances 2/3";
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      dependance.text = "📦 Installation des dépendances 3/3";
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      dependance.succeed(
-        chalk.green("📦 Installation des dépendances : Termnier")
-      );
-
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      const textnewtropbien = ora({
-        text: "✏️ Configuration sumplémenantaire 1/5",
-        color: "cyan",
-      }).start();
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      textnewtropbien.text = "✏️ Configuration sumplémenantaire 2/5";
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      textnewtropbien.text = "✏️ Configuration sumplémenantaire 3/5";
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      textnewtropbien.text = "✏️ Configuration sumplémenantaire 4/5";
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      textnewtropbien.text = "✏️ Configuration sumplémenantaire 5/5";
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      textnewtropbien.succeed(chalk.green("🎉 Installation terminée avec succès !"));
+    if (!data.version) {
       console.log(
-        boxen(
-          chalk.green.bold("Projet installé avec succès 🎉\n\n") +
-
-          chalk.blue("Developped by Wagoo SaaS\n") +
-          chalk.blue("Version : 1.0.0\n") +
-          chalk.blue("Licence : Preline UI Fair & Wagoo System\n") +
-          chalk.blue("How to install : https://github.com/wagoo-app/wagoo-app/install.md\n\n") +
-          chalk.blue("Launch project : \n") +
-          chalk.yellow("$ cd wagoo-app\n") +
-          chalk.yellow("$ wagoo open\n"),
-          // chalk.yellow("Open browser : $ wagoo link\n") +
-          // chalk.yellow("Start Tailwindcss : $ wagoo css\n") +
-          // chalk.yellow("Build Tailwindcss : $ wagoo build css\n") +
-          // chalk.yellow("Start Desktop Electron.Js App : $ wagoo desktop\n") +
-          // chalk.yellow("Build Desktop Electron.Js App : $ wagoo build desktop\n") +
-          // chalk.yellow("Push to github : $ wagoo push\n") +
-          { padding: 1, borderStyle: "round", borderColor: "green" }
-        )
+        chalk.red("Le fichier .wagoo-config n’a pas de champ version.")
       );
-
-      rl.close();
-      process.exit(0);
-    } catch (error) {
-      console.error("❌ Une erreur s'est produite lors de l'installation.");
-      console.error(error);
-      rl.close();
       process.exit(1);
     }
-  });
 
+    const { bumpType } = await safePrompt([
+      {
+        type: "list",
+        name: "bumpType",
+        message: "Quelle partie de la version voulez-vous incrémenter ?",
+        choices: ["patch", "minor", "major"],
+      },
+    ]);
+
+    if (bumpType === "patch") data.version.patch += 1;
+    else if (bumpType === "minor") {
+      data.version.minor += 1;
+      data.version.patch = 0;
+    } else if (bumpType === "major") {
+      data.version.major += 1;
+      data.version.minor = 0;
+      data.version.patch = 0;
+    }
+
+    const newVersion = `${data.version.major}.${data.version.minor}.${data.version.patch}`;
+    const nameVersion = data.version.name_version || "";
+
+    const { extraMessage } = await safePrompt([
+      {
+        type: "input",
+        name: "extraMessage",
+        message: "Message additionnel pour le commit (facultatif) :",
+      },
+    ]);
+
+    let note = `Updated to v${newVersion}`;
+    if (nameVersion) note += ` (${nameVersion})`;
+    if (extraMessage?.trim()) note += ` - ${extraMessage.trim()}`;
+    data.version.note_version = note;
+
+    saveConfig(data);
+
+    exec("git rev-parse --abbrev-ref HEAD", (err, stdout) => {
+      if (err) {
+        console.log(
+          chalk.red(`Impossible de récupérer la branche : ${err.message}`)
+        );
+        return;
+      }
+
+      const branchName = stdout.trim();
+      let commitMessage = `update ${branchName} v${newVersion}`;
+      if (extraMessage?.trim()) commitMessage += ` - ${extraMessage.trim()}`;
+
+      exec(
+        `git add .wagoo-config && git commit -m "${commitMessage}" && git push origin ${branchName}`,
+        (err2) => {
+          if (err2)
+            console.log(chalk.red(`Erreur lors du commit : ${err2.message}`));
+          else
+            console.log(
+              chalk.green(
+                `✅ Version bumpée à ${newVersion} (${
+                  nameVersion || "no name"
+                }) et commit effectué !`
+              )
+            );
+        }
+      );
+    });
+  });
 
 program.parse(process.argv);
